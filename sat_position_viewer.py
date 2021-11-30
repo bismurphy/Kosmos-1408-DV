@@ -7,7 +7,7 @@ from matplotlib.widgets import Slider
 
 ts = load.timescale()
 global time_of_interest
-time_of_interest = ts.utc(2021,11,15,2)
+time_of_interest = ts.utc(2021,11,15,2,53,44)
 TWOPI = 2 * np.pi
 HALFPI = np.pi / 2
 def mark_satellite(sat,plot_time):
@@ -59,7 +59,7 @@ date_slider.valtext.set_text(time_of_interest.utc_strftime("\n%Y-%m-%d\n%H:%M:%S
 global plotted_objects
 plotted_objects = []
 ax.set_title("")
-with open('tles.txt') as tlefile:
+with open('corrected_tles.txt') as tlefile:
     lines = tlefile.readlines()
     #split file into groups of 3 lines
     triplets= [lines[i:i+3] for i in range(0,len(lines),3)]

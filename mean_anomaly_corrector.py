@@ -9,8 +9,8 @@ import numpy as np
 #Define a class of satellite that remembers its mean anomaly and can be adjusted.
 class meanSat(EarthSatellite):
     def __init__(self,line1,line2,name=None, ts=None):
-        self.line1 = line1
-        self.line2 = line2
+        self.line1 = line1.replace("\n","")
+        self.line2 = line2.replace("\n","")
         self.name = name
         self.ts = ts
         super().__init__(line1,line2,name,ts)
@@ -52,20 +52,23 @@ for time in time_range:
 print(overall_variance)
 impact_time = time_of_min_var
 print(f"Collision found. {impact_time.utc_strftime()}")
-#Step 3: Get the average position of all the objects at that time
-locations_at_impact = np.array([sat.at(impact_time).position.m for sat in objects])
-mean_location = locations_at_impact.mean(axis=0)
-print(mean_location)
+#Step 3: Get the known location of the target sat at that time
+intact_line1 = '1 13552U 82092A   21317.92599714  .00002092  00000-0  71807-4 0  9997'
+intact_line2 = '2 13552  82.5637 124.8027 0018519 111.6524 248.6690 15.29385168142636'
+intact_sat = EarthSatellite(intact_line1,intact_line2)
+impact_site = intact_sat.at(impact_time).position.m
+print(impact_site)
 #Step 4: For each object, identify the best mean anomaly to get close to that location.
 for sat in objects:
     best_MA = None
     mindist = 1e20
     for ma_val in np.linspace(0,360,1000):
         sat.set_MA(ma_val)
-        dist = np.linalg.norm(sat.at(impact_time).position.m - mean_location)
+        dist = np.linalg.norm(sat.at(impact_time).position.m - impact_site)
         if dist < mindist:
             best_MA = ma_val
             mindist = dist
+    sat.set_MA(best_MA)
 #Step 5: Rerun the center-finder.
 for time in time_range:
     sat_positions = [sat.at(time).position.km for sat in objects]
@@ -79,3 +82,10 @@ for time in time_range:
         min_variance = overall_variance
         time_of_min_var = time
 print(overall_variance)
+print(time_of_min_var - impact_time)
+#Step 6: Output TLEs
+with open('corrected_tles.txt','w') as f:
+    for sat in objects:
+        f.write(sat.name+"\n")
+        f.write(sat.line1+"\n")
+        f.write(sat.line2+"\n")

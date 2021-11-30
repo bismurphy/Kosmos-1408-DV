@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 print("Loading TLE's of debris objects")
-with open('tles.txt') as tlefile:
+with open('corrected_tles.txt') as tlefile:
     lines = tlefile.readlines()
     #split file into groups of 3 lines
     triplets= [lines[i:i+3] for i in range(0,len(lines),3)]
