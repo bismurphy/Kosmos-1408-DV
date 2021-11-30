@@ -45,15 +45,26 @@ print(f"Collision found. {time_of_impact.utc_strftime()}")
 intact_line1 = '1 13552U 82092A   21317.92599714  .00002092  00000-0  71807-4 0  9997'
 intact_line2 = '2 13552  82.5637 124.8027 0018519 111.6524 248.6690 15.29385168142636'
 intact_sat = EarthSatellite(intact_line1,intact_line2)
+impact_site = intact_sat.at(time_of_impact).position.m
+
+#with the collision located, find the variances of those positions to identify outliers
+#(ones that are not actually "attached" to the spacecraft at time of collision)
+sat_positions = np.array([sat.at(time_of_impact).position.m for sat in objects])
+alts = [np.linalg.norm(p) - 6371000 for p in sat_positions]
+deviations = sat_positions - impact_site
+
 #Establish the velocity that the sat had at the moment of impact
 pre_collision_velocity = intact_sat.at(time_of_impact).velocity.m_per_s
 #Now get the velocity of every debris object at the moment of ejection
 post_collision_velocities = [deb.at(time_of_impact).velocity.m_per_s for deb in objects]
+speeds = [np.linalg.norm(v) for v in post_collision_velocities]
+angles = [np.arccos(np.dot(v,pre_collision_velocity) / (np.linalg.norm(v) * np.linalg.norm(pre_collision_velocity))) for v in post_collision_velocities]
+
+print(angles)
 #Subtract the pre velocity from each of the post velocities (row-wise vector subtraction)
 delta_v = post_collision_velocities - pre_collision_velocity
 
 #We now have the delta v values, in the ECI XYZ frame. Convert to orbit frame (prograde, radial, normal)
-impact_site = intact_sat.at(time_of_impact).position.m
 radial_hat = impact_site / np.linalg.norm(impact_site)
 
 prograde_hat = pre_collision_velocity / np.linalg.norm(pre_collision_velocity)
@@ -73,24 +84,19 @@ transform_dv_mag = np.array([np.linalg.norm(x) for x in orbframe_dv])
 
 radials,progrades,normals = orbframe_dv.T
 
-print(radials[-5])
-print(orbframe_dv[-5])
-print(delta_v[-5])
-print(post_collision_velocities[-5])
-print(objects[-5])
-##plt.scatter(progrades,radials)
-##plt.title("Prograde DV versus Radial DV")
-##plt.xlabel("Prograde velocity change (m/s)")
-##plt.ylabel("Radial velocity change (m/s)")
-##plt.show()
-##plt.scatter(progrades,normals)
-##plt.title("Prograde DV versus Normal DV")
-##plt.xlabel("Prograde velocity change (m/s)")
-##plt.ylabel("Normal velocity change (m/s)")
-##plt.show()
-##plt.scatter(radials,normals)
-##plt.title("Radial DV versus Normal DV")
-##plt.xlabel("Radial velocity change (m/s)")
-##plt.ylabel("Normal velocity change (m/s)")
-##plt.show()
+plt.scatter(progrades,radials)
+plt.title("Prograde DV versus Radial DV")
+plt.xlabel("Prograde velocity change (m/s)")
+plt.ylabel("Radial velocity change (m/s)")
+plt.show()
+plt.scatter(progrades,normals)
+plt.title("Prograde DV versus Normal DV")
+plt.xlabel("Prograde velocity change (m/s)")
+plt.ylabel("Normal velocity change (m/s)")
+plt.show()
+plt.scatter(radials,normals)
+plt.title("Radial DV versus Normal DV")
+plt.xlabel("Radial velocity change (m/s)")
+plt.ylabel("Normal velocity change (m/s)")
+plt.show()
 
