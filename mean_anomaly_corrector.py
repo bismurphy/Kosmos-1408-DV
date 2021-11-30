@@ -22,7 +22,7 @@ class meanSat(EarthSatellite):
 
 #Step 1: Load initial TLEs.
 print("Loading TLE's of debris objects")
-with open('tles.txt') as tlefile:
+with open('tles_noDG.txt') as tlefile:
     lines = tlefile.readlines()
     #split file into groups of 3 lines
     triplets= [lines[i:i+3] for i in range(0,len(lines),3)]
@@ -49,7 +49,7 @@ for time in time_range:
     if overall_variance < min_variance:
         min_variance = overall_variance
         time_of_min_var = time
-print(overall_variance)
+print("Variance:" + str(overall_variance))
 impact_time = time_of_min_var
 print(f"Collision found. {impact_time.utc_strftime()}")
 #Step 3: Get the known location of the target sat at that time
@@ -62,7 +62,7 @@ print(impact_site)
 for sat in objects:
     best_MA = None
     mindist = 1e20
-    for ma_val in np.linspace(0,360,1000):
+    for ma_val in np.linspace(0,360,3600):
         sat.set_MA(ma_val)
         dist = np.linalg.norm(sat.at(impact_time).position.m - impact_site)
         if dist < mindist:
@@ -81,9 +81,35 @@ for time in time_range:
     if overall_variance < min_variance:
         min_variance = overall_variance
         time_of_min_var = time
-print(overall_variance)
-print(time_of_min_var - impact_time)
-#Step 6: Output TLEs
+print("Variance:" + str(overall_variance))
+print(time_of_min_var - impact_time) #This is near 0, so time of impact doesn't change.
+#Step 6: Refine mean anomaly. TLE gives 4 digits of precision so let's go with it.
+#Previous step found best result to 0.1 degrees, so refine around that.
+for sat in objects:
+    current_MA = sat.chosen_mean_anomaly
+    best_MA = None
+    mindist = 1e20
+    for ma_val in np.linspace(current_MA -0.1,current_MA + 0.1,1000):
+        sat.set_MA(ma_val)
+        dist = np.linalg.norm(sat.at(impact_time).position.m - impact_site)
+        if dist < mindist:
+            best_MA = ma_val
+            mindist = dist
+    sat.set_MA(best_MA)
+#Step 7: Get one last variance analysis.
+for time in time_range:
+    sat_positions = [sat.at(time).position.km for sat in objects]
+    #sat_positions is now a snapshot array where every row is xyz for a sat.
+    #Get variance along each column
+    sat_positions = np.array(sat_positions)
+    variance_by_axis = sat_positions.var(axis=0)
+    #Find overall variance by pythagorean of each individual one.
+    overall_variance = sum([v**2 for v in variance_by_axis])
+    if overall_variance < min_variance:
+        min_variance = overall_variance
+        time_of_min_var = time
+print("Variance:" + str(overall_variance))
+#Step 8: Output TLEs
 with open('corrected_tles.txt','w') as f:
     for sat in objects:
         f.write(sat.name+"\n")
